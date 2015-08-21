@@ -5,7 +5,7 @@ import (
 	//"bytes"
 	//"encoding/json"
 	"errors"
-	//"fmt"
+	"fmt"
 	"github.com/deepglint/glog"
 	//"io"
 	"mime/multipart"
@@ -120,7 +120,7 @@ func (this *LogForwarder) Ping() (time.Duration, string, error) {
 	now := time.Now()
 	url := this.url
 	url.Path = "ping"
-	//glog.Infof(url.String())
+	fmt.Println(url.String())
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
@@ -154,7 +154,7 @@ func (this *LogForwarder) Query(q *Query) (*http.Response, error) {
 		params.Set("db", q.Database)
 	}
 	url.RawQuery = params.Encode()
-	//fmt.Println(url.String())
+	fmt.Println(url.String())
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
@@ -194,6 +194,7 @@ func (this *LogForwarder) Write(file multipart.File, filename string) (*http.Res
 	params.Set("precision", this.precision)
 	//params.Set("rp", "default")
 	url.RawQuery = params.Encode()
+	fmt.Println(url.String())
 
 	//Send the multipart.file to influxdb directly
 	req, err := http.NewRequest("POST", url.String(), file)
