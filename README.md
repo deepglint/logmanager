@@ -1,5 +1,8 @@
 # logmanager
 
+##dependencies
+	github.com/deepglint/glog
+	github.com/deepglint/muses/util/ripple
 ##server
 receive upload log file from client, and forward it to influxdb
 
