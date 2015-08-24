@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func PostFile(filename string, targetUrl string) error {
+func PostFile(filename, targetUrl string) error {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 
@@ -69,7 +69,7 @@ func PostFile(filename string, targetUrl string) error {
 	return nil
 }
 
-func SendLog(url, dir string) error {
+func SendLog(url, dir string, upload, keep time.Duration) error {
 	err := filepath.Walk(dir, func(filename string, f os.FileInfo, err error) error {
 		if f == nil {
 			info_err := errors.New("Filepath.Walk() returned no fileinfo")
@@ -79,28 +79,36 @@ func SendLog(url, dir string) error {
 		if f.IsDir() {
 			return nil
 		}
-		// if b, _ := path.Match("test.????-??-??-??:??:??", f.Name()); !b {
 		if b, _ := path.Match("LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
 			fields := strings.Split(f.Name(), ".")
 			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[2])
 			time_int := t.Unix()
-			fmt.Println("Log created at: ", t, "\tTime now: ", time.Now())
-			if time.Now().Unix()-360 > time_int {
-				if time.Now().Unix()-600 > time_int {
-					err := os.Remove(filename)
-					if err == nil {
-						fmt.Printf("%s removed \n", filename)
-						return nil
-					}
-				}
+			// glog.Infoln("Log created at: ", t, "\tTime now: ", time.Now())
+			// fmt.Println("Log created at: ", t, "\tTime now: ", time.Now())
+			if time.Now().Unix()-int64(upload.Seconds()) > time_int {
 				post_err := PostFile(filename, url)
 				if post_err != nil {
-					glog.Errorf("Upload file failed, %v", post_err)
+					// glog.Errorf("Upload file failed, %v", post_err)
 				} else {
+					os.Rename(f.Name(), "OLD."+f.Name())
+					glog.Infof("%s upload succeed \n", filename)
 					fmt.Printf("%s upload succeed \n", filename)
-					return nil
 				}
 			}
+			return nil
+		}
+		if b, _ := path.Match("OLD.LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
+			fields := strings.Split(f.Name(), ".")
+			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[3])
+			time_int := t.Unix()
+			if time.Now().Unix()-int64(keep.Seconds()) > time_int {
+				err := os.Remove(filename)
+				if err == nil {
+					glog.Infof("%s removed \n", filename)
+					fmt.Printf("%s removed \n", filename)
+				}
+			}
+			return nil
 		}
 		return nil
 	})
@@ -121,19 +129,14 @@ func SendLogNow(url, dir string) error {
 			return nil
 		}
 		if b, _ := path.Match("LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
-			fields := strings.Split(f.Name(), ".")
-			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[2])
-			time_int := t.Unix()
-			fmt.Println("Log created at: ", t, "\tTime now: ", time.Now())
-			if time.Now().Unix()-360-180 < time_int {
-				post_err := PostFile(filename, url)
-				if post_err != nil {
-					glog.Errorf("Upload file failed, %v", post_err)
-				} else {
-					fmt.Printf("%s upload succeed \n", filename)
-					return nil
-				}
+			post_err := PostFile(filename, url)
+			if post_err != nil {
+				glog.Errorf("Upload file failed, %v", post_err)
+			} else {
+				glog.Infof("%s upload succeed \n", filename)
+				fmt.Printf("%s upload succeed \n", filename)
 			}
+			return nil
 		}
 		return nil
 	})

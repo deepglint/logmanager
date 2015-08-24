@@ -5,6 +5,7 @@ import (
 	//"github.com/deepglint/glog"
 	"github.com/deepglint/logmanager/client/client"
 	"github.com/deepglint/muses/util/ripple"
+	// "time"
 )
 
 type LogClientController struct {
@@ -28,4 +29,9 @@ func NewLogClientController(name, hosturl, logdir string) (*LogClientController,
 
 func (this *LogClientController) GetSync(ctx *ripple.Context) {
 	client.Flush(this.url, this.dir)
+}
+
+func (this *LogClientController) GetFavicon(ctx *ripple.Context) {
+	ctx.Response.Status = 200
+	ctx.Response.Body = nil
 }
