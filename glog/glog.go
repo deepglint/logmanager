@@ -403,7 +403,7 @@ func init() {
 	flag.Var(&logging.stderrThreshold, "stderr", "logs at or above this threshold go to stderr")
 	flag.Var(&logging.vmodule, "vmodule_deepglint", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at_deepglint", "when logging hits line file:N, emit a stack trace")
-
+	flag.DurationVar(&logging.duration, "log_file_name_interval", time.Duration(5)*time.Minute, "log file name interval, create a new log file every interval")
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
 
@@ -454,6 +454,8 @@ type loggingT struct {
 	// safely using atomic.LoadInt32.
 	vmodule   moduleSpec // The state of the -vmodule flag.
 	verbosity Level      // V logging level, the value of the -v flag/
+
+	duration time.Duration
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -587,7 +589,7 @@ func (l *loggingT) header(s severity) *buffer {
 	pidkv := " value=" + strconv.Itoa(pid)
 	buf.WriteString(pidkv)
 
-	positionkv := ",debug=\"" + file + ":" + strconv.Itoa(line) + "\""
+	positionkv := ",debug=\"" + file + ":" + strconv.Itoa(line) + " on " + time.Now().Format("2006-01-02T15:04:05Z") + "\""
 	buf.WriteString(positionkv)
 
 	/*
