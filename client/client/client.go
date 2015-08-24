@@ -90,7 +90,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 				if post_err != nil {
 					// glog.Errorf("Upload file failed, %v", post_err)
 				} else {
-					os.Rename(f.Name(), "OLD."+f.Name())
+					os.Rename(filename, path.Dir(filename)+"/OLD."+f.Name())
 					glog.Infof("%s upload succeed \n", filename)
 					fmt.Printf("%s upload succeed \n", filename)
 				}
