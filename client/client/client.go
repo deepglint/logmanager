@@ -79,7 +79,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 		if f.IsDir() {
 			return nil
 		}
-		if b, _ := path.Match("LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
+		if b, _ := path.Match("LOG.*.*????-??-??-??:??:??", f.Name()); b {
 			fields := strings.Split(f.Name(), ".")
 			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[2])
 			time_int := t.Unix()
@@ -128,7 +128,7 @@ func SendLogNow(url, dir string) error {
 		if f.IsDir() {
 			return nil
 		}
-		if b, _ := path.Match("LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
+		if b, _ := path.Match("LOG.*.*????-??-??-??:??:??", f.Name()); b {
 			post_err := PostFile(filename, url)
 			if post_err != nil {
 				glog.Errorf("Upload file failed, %v", post_err)
