@@ -29,12 +29,12 @@ Usage of ./logserver:
   -vmodule_deepglint=: comma-separated list of pattern=N settings for file-filtered logging
   ```
 
- ##client
- upload log file to server
+##client
+upload log file to server
 
- ###build 
- 	go build logclient.go
- ###parameters
+###build 
+	go build logclient.go
+###parameters
  ```
  Usage of ./logclient:
   -alsologtostderr_deepglint=false: log to standard error as well as files
