@@ -8,6 +8,7 @@ import (
 	"github.com/deepglint/logmanager/client/controller"
 	"github.com/deepglint/muses/util/ripple"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -29,9 +30,9 @@ func main() {
 	flag.StringVar(&config.Host, "server_host", "http://localhost", "Log server host")
 	flag.StringVar(&config.Port, "server_port", ":1734", "Log server listen port")
 	flag.StringVar(&config.Method, "method", "/upload", "Log client method")
-	flag.StringVar(&config.Dir, "dir", "./", "Upload Directory")
+	flag.StringVar(&config.Dir, "dir", os.TempDir(), "Upload Directory")
 	flag.StringVar(&config.ListenPort, "client_listen_port", ":1735", "Log client server listening port")
-	flag.DurationVar(&config.UploadInterval, "upload_interval", time.Duration(15)*time.Minute, "Upload file created before upload interval (better be smaller than keep_interval)")
+	flag.DurationVar(&config.UploadInterval, "upload_interval", time.Duration(15)*time.Minute, "Upload file created before upload interval (better be smaller than keep_interval, has to be bigger than log file create interval)")
 	flag.DurationVar(&config.KeepInterval, "keep_interval", time.Duration(30)*time.Minute, "Log file kept time (better be bigger than sleep_interval and upload_interval)")
 	flag.DurationVar(&config.SleepInterval, "sleep_interval", time.Duration(10)*time.Minute, "Sleep time interval between every upload action (better smaller than keep_interval)")
 	flag.Parse()
@@ -45,6 +46,10 @@ func main() {
 	// 		// fmt.Printf("%v\n", config.KeepInterval)
 	// 	}
 	// }
+	if config.Dir[len(config.Dir)-1] != '/' {
+		config.Dir += "/"
+	}
+
 	glog.Infof("Log file will be kept for %v, log file will be uploaded %v after created, log client will run every %v", config.KeepInterval, config.UploadInterval, config.SleepInterval)
 	fmt.Printf("Log file will be kept for %v, log file will be uploaded %v after created, log client will run every %v\n", config.KeepInterval, config.UploadInterval, config.SleepInterval)
 

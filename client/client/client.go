@@ -97,7 +97,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 			}
 			return nil
 		}
-		if b, _ := path.Match("OLD.LOG.*.ULAT????-??-??-??:??:??", f.Name()); b {
+		if b, _ := path.Match("OLD.LOG.*.*????-??-??-??:??:??", f.Name()); b {
 			fields := strings.Split(f.Name(), ".")
 			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[3])
 			time_int := t.Unix()
