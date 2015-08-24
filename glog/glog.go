@@ -749,12 +749,13 @@ func (l *loggingT) output(s severity, buf *buffer) {
 		if l.alsoToStderr || s >= l.stderrThreshold.get() {
 			os.Stderr.Write(data)
 		}
-		if l.file[s] == nil {
-			if err := l.createFiles(s); err != nil {
-				os.Stderr.Write(data) // Make sure the message appears somewhere.
-				l.exit(err)
-			}
+		//if l.file[s] == nil {
+		err := l.createFiles(s)
+		if err != nil {
+			os.Stderr.Write(data) // Make sure the message appears somewhere.
+			l.exit(err)
 		}
+		//}
 		switch s {
 		case fatalLog:
 			//l.file[fatalLog].Write(data)
@@ -919,7 +920,8 @@ func (l *loggingT) createFiles(sev severity) error {
 	now := time.Now()
 	// Files are created in decreasing severity order, so as soon as we find one
 	// has already been created, we can stop.
-	for s := infoLog; s >= infoLog && l.file[s] == nil; s-- {
+	for s := infoLog; s >= infoLog; s-- {
+		// for s := infoLog; s >= infoLog && l.file[s] == nil; s-- {
 		//for s := sev; s >= infoLog && l.file[s] == nil; s-- {
 		sb := &syncBuffer{
 			logger: l,
