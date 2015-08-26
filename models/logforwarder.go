@@ -76,7 +76,6 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 		return 500, err
 	}
 	filename := path.Base(handler.Filename)
-	//fmt.Println(filename)
 	var database string
 	if strings.ContainsAny(filename, ".") {
 		fields := strings.Split(filename, ".")
@@ -90,6 +89,7 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 	if err != nil {
 		return 400, err
 	}
+
 	q = alterRetentionPolicy(database, this.retentionPolicy)
 	_, err = this.Query(q)
 	if err != nil {
@@ -194,7 +194,6 @@ func (this *LogForwarder) Write(file multipart.File, filename string) (*http.Res
 	params.Set("precision", this.precision)
 	//params.Set("rp", "default")
 	url.RawQuery = params.Encode()
-	// fmt.Println(url.String())
 
 	//Send the multipart.file to influxdb directly
 	req, err := http.NewRequest("POST", url.String(), file)
@@ -281,7 +280,7 @@ func Save(logs []LogModel) error {
 */
 
 func createDatabase(database string) *Query {
-	cmd := "CREATE DATABASE " + database
+	cmd := "CREATE DATABASE \"" + database + "\""
 	q := &Query{
 		Command:  cmd,
 		Database: "",
@@ -290,7 +289,7 @@ func createDatabase(database string) *Query {
 }
 
 func alterRetentionPolicy(database, duration string) *Query {
-	cmd := "ALTER RETENTION POLICY default ON " + database + " DURATION " + duration
+	cmd := "ALTER RETENTION POLICY default ON \"" + database + "\" DURATION " + duration
 	q := &Query{
 		Command:  cmd,
 		Database: "",
