@@ -19,10 +19,13 @@
 package glog
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -56,15 +59,39 @@ var (
 	ip       = "unknownip"
 )
 
-func init() {
-	h, err := os.Hostname()
-	if err == nil {
-		host = shortHostname(h)
-	}
+type SensorId struct {
+	Key           string
+	Value         string
+	ModifiedIndex int
+	CreatedIndex  int
+}
 
-	current, err := user.Current()
-	if err == nil {
-		userName = current.Username
+type Sensor struct {
+	Action string
+	Node   SensorId
+}
+
+func init() {
+	resp, err := http.Get("http://localhost:4001/v2/keys/config/global/sensor_uid")
+	if err != nil || resp.StatusCode != 200 {
+		h, err := os.Hostname()
+		if err == nil {
+			host = shortHostname(h)
+		}
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		//fmt.Printf("%s", string(body))
+		var sen Sensor
+		err = json.Unmarshal(body, &sen)
+		if err == nil {
+			host = sen.Node.Value
+		}
+
+		current, err := user.Current()
+		if err == nil {
+			userName = current.Username
+		}
 	}
 
 	// Sanitize userName since it may contain filepath separators on Windows.
