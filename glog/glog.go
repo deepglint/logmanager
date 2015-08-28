@@ -399,7 +399,8 @@ type flushSyncWriter interface {
 func init() {
 	flag.BoolVar(&logging.toStderr, "logtostderr_deepglint", false, "log to standard error instead of files")
 	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr_deepglint", false, "log to standard error as well as files")
-	flag.Var(&logging.verbosity, "v_deepglint", "log level for V logs")
+	flag.BoolVar(&logging.debug, "debug", false, "set debug to true to output local debug file")
+	flag.Var(&logging.verbosity, "v_deepglgnt", "log level for V logs")
 	flag.Var(&logging.stderrThreshold, "stderr", "logs at or above this threshold go to stderr")
 	flag.Var(&logging.vmodule, "vmodule_deepglint", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at_deepglint", "when logging hits line file:N, emit a stack trace")
@@ -456,6 +457,7 @@ type loggingT struct {
 	verbosity Level      // V logging level, the value of the -v flag/
 
 	duration time.Duration
+	debug    bool
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -580,44 +582,44 @@ func (l *loggingT) header(s severity) *buffer {
 	// buf.tmp[n+1] = ']'
 	// buf.tmp[n+2] = ' '
 	// buf.Write(buf.tmp[:n+3])
-	measurementkv := program
-	buf.WriteString(measurementkv)
+	if !logging.debug {
+		measurementkv := program
+		buf.WriteString(measurementkv)
 
-	severitykv := ",type=" + severityString[s]
-	buf.WriteString(severitykv)
+		severitykv := ",type=" + severityString[s]
+		buf.WriteString(severitykv)
 
-	pidkv := " value=" + strconv.Itoa(pid)
-	buf.WriteString(pidkv)
+		pidkv := " value=" + strconv.Itoa(pid)
+		buf.WriteString(pidkv)
 
-	positionkv := ",debug=\"" + file + ":" + strconv.Itoa(line) + " on " + time.Now().Format("2006-01-02T15:04:05Z") + "\""
-	buf.WriteString(positionkv)
+		positionkv := ",debug=\"" + file + ":" + strconv.Itoa(line) + " on " + time.Now().Format("2006-01-02T15:04:05Z") + "\""
+		buf.WriteString(positionkv)
+	} else {
 
-	/*
+		//////////////////////////////////////////////////////////
+		severitykv := "{\"type\":\"" + severityString[s] + "\","
+		buf.WriteString(severitykv)
+		// for i = n; i < 8; i++ {
+		// 	buf.tmp[i] = ' '
+		// }
 
-			//////////////////////////////////////////////////////////
-			severitykv := "{\"type\":\"" + severityString[s] + "\","
-			buf.WriteString(severitykv)
-			// for i = n; i < 8; i++ {
-			// 	buf.tmp[i] = ' '
-			// }
-
-		//timekv := "\"time\":\"" + now.Format("2006-01-02T15:04:05Z") + "\","
-		timekv := "\"time\":\"" + strconv.FormatInt(now.UnixNano(), 10) + "\","
+		timekv := "\"time\":\"" + time.Now().Format("2006-01-02T15:04:05Z") + "\","
+		// timekv := "\"time\":\"" + strconv.FormatInt(now.UnixNano(), 10) + "\","
 		buf.WriteString(timekv)
 
 		// hostkv := "\"host\":\"" + ip + "\","
 		// buf.WriteString(hostkv)
 
-			processkv := "\"process\":\"" + program + "\","
-			buf.WriteString(processkv)
+		processkv := "\"process\":\"" + program + "\","
+		buf.WriteString(processkv)
 
-			pidkv := "\"pid\":\"" + strconv.Itoa(pid) + "\","
-			buf.WriteString(pidkv)
+		pidkv := "\"pid\":\"" + strconv.Itoa(pid) + "\","
+		buf.WriteString(pidkv)
 
-			positonkv := "\"debug\":\"" + file + ":" + strconv.Itoa(line) + "\","
-			buf.WriteString(positonkv)
-			//////////////////////////////////////////////////////////
-	*/
+		positonkv := "\"debug\":\"" + file + ":" + strconv.Itoa(line) + "\","
+		buf.WriteString(positonkv)
+		//////////////////////////////////////////////////////////
+	}
 	return buf
 }
 
@@ -658,27 +660,39 @@ func (buf *buffer) someDigits(i, d int) int {
 
 func (l *loggingT) println(s severity, args ...interface{}) {
 	buf := l.header(s)
-	buf.WriteString(",message=")
-	tmpb := make([]byte, 0)
-	tmpbuf := bytes.NewBuffer(tmpb)
-	fmt.Fprint(tmpbuf, args...)
-	buf.WriteString(strconv.Quote(tmpbuf.String()))
-	buf.WriteString(" ")
-	timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
-	buf.WriteString(timekv)
+	if !logging.debug {
+		buf.WriteString(",message=")
+		tmpb := make([]byte, 0)
+		tmpbuf := bytes.NewBuffer(tmpb)
+		fmt.Fprint(tmpbuf, args...)
+		buf.WriteString(strconv.Quote(tmpbuf.String()))
+		buf.WriteString(" ")
+		timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
+		buf.WriteString(timekv)
+	} else {
+		buf.WriteString("\"message\":\"")
+		fmt.Fprint(buf, args...)
+		buf.WriteString("\"}\n")
+	}
 	l.output(s, buf)
 }
 
 func (l *loggingT) print(s severity, args ...interface{}) {
 	buf := l.header(s)
-	buf.WriteString(",message=")
-	tmpb := make([]byte, 0)
-	tmpbuf := bytes.NewBuffer(tmpb)
-	fmt.Fprint(tmpbuf, args...)
-	buf.WriteString(strconv.Quote(tmpbuf.String()))
-	buf.WriteString(" ")
-	timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
-	buf.WriteString(timekv)
+	if !logging.debug {
+		buf.WriteString(",message=")
+		tmpb := make([]byte, 0)
+		tmpbuf := bytes.NewBuffer(tmpb)
+		fmt.Fprint(tmpbuf, args...)
+		buf.WriteString(strconv.Quote(tmpbuf.String()))
+		buf.WriteString(" ")
+		timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
+		buf.WriteString(timekv)
+	} else {
+		buf.WriteString("\"message\":\"")
+		fmt.Fprint(buf, args...)
+		buf.WriteString("\"}")
+	}
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
@@ -687,14 +701,20 @@ func (l *loggingT) print(s severity, args ...interface{}) {
 
 func (l *loggingT) printf(s severity, format string, args ...interface{}) {
 	buf := l.header(s)
-	buf.WriteString(",message=")
-	tmpb := make([]byte, 0)
-	tmpbuf := bytes.NewBuffer(tmpb)
-	fmt.Fprintf(tmpbuf, format, args...)
-	buf.WriteString(strconv.Quote(tmpbuf.String()))
-	buf.WriteString(" ")
-	timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
-	buf.WriteString(timekv)
+	if !logging.debug {
+		buf.WriteString(",message=")
+		tmpb := make([]byte, 0)
+		tmpbuf := bytes.NewBuffer(tmpb)
+		fmt.Fprintf(tmpbuf, format, args...)
+		buf.WriteString(strconv.Quote(tmpbuf.String()))
+		buf.WriteString(" ")
+		timekv := strconv.FormatInt(time.Now().UnixNano(), 10) + "\n"
+		buf.WriteString(timekv)
+	} else {
+		buf.WriteString("\"message\":\"")
+		fmt.Fprintf(buf, format, args...)
+		buf.WriteString("\"}")
+	}
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
@@ -750,24 +770,32 @@ func (l *loggingT) output(s severity, buf *buffer) {
 			os.Stderr.Write(data)
 		}
 		//if l.file[s] == nil {
-		err := l.createFiles(s)
-		if err != nil {
-			os.Stderr.Write(data) // Make sure the message appears somewhere.
-			l.exit(err)
-		}
-		//}
-		switch s {
-		case fatalLog:
-			//l.file[fatalLog].Write(data)
-			fallthrough
-		case errorLog:
-			//l.file[errorLog].Write(data)
-			fallthrough
-		case warningLog:
-			//l.file[warningLog].Write(data)
-			fallthrough
-		case infoLog:
+		if !logging.debug {
+			err := l.createFiles()
+			if err != nil {
+				os.Stderr.Write(data) // Make sure the message appears somewhere.
+				l.exit(err)
+			}
 			l.file[infoLog].Write(data)
+		} else {
+			err := l.createDebugFiles(s)
+			if err != nil {
+				os.Stderr.Write(data) // Make sure the message appears somewhere.
+				l.exit(err)
+			}
+			switch s {
+			case fatalLog:
+				l.file[fatalLog].Write(data)
+				fallthrough
+			case errorLog:
+				l.file[errorLog].Write(data)
+				fallthrough
+			case warningLog:
+				l.file[warningLog].Write(data)
+				fallthrough
+			case infoLog:
+				l.file[infoLog].Write(data)
+			}
 		}
 	}
 	if s == fatalLog {
@@ -778,10 +806,15 @@ func (l *loggingT) output(s severity, buf *buffer) {
 		// Write the stack trace for all goroutines to the files.
 		trace := stacks(true)
 		logExitFunc = func(error) {} // If we get a write error, we'll still exit below.
-		//for log := fatalLog; log >= infoLog; log-- {
-		for log := infoLog; log >= infoLog; log-- {
-			if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
+		if !logging.debug {
+			if f := l.file[infoLog]; f != nil { // Can be nil if -logtostderr is set.
 				f.Write(trace)
+			}
+		} else {
+			for log := fatalLog; log >= infoLog; log-- {
+				if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
+					f.Write(trace)
+				}
 			}
 		}
 		l.mu.Unlock()
@@ -789,7 +822,9 @@ func (l *loggingT) output(s severity, buf *buffer) {
 		os.Exit(255) // C++ uses -1, which is silly because it's anded with 255 anyway.
 	}
 	l.putBuffer(buf)
-	l.flushAll() //Custom change
+	if !logging.debug {
+		l.flushAll() //Custom change
+	}
 	l.mu.Unlock()
 	if stats := severityStats[s]; stats != nil {
 		atomic.AddInt64(&stats.lines, 1)
@@ -900,10 +935,32 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 
 	// Write header.
 	var buf bytes.Buffer
-	// fmt.Fprintf(&buf, "Log file created at: %s\n", now.Format("2006/01/02 15:04:05"))
-	// fmt.Fprintf(&buf, "Running on machine: %s\n", host)
-	// fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	// fmt.Fprintf(&buf, "Log line format: [IWEF] mmdd hh:mm:ss.uuuuuu thread threadid file:line msg\n")
+
+	n, err := sb.file.Write(buf.Bytes())
+	sb.nbytes += uint64(n)
+	return err
+}
+
+func (sb *syncBuffer) rotateDebugFile(now time.Time) error {
+	if sb.file != nil {
+		sb.Flush()
+		sb.file.Close()
+	}
+	var err error
+	sb.file, _, err = create(severityName[sb.sev], now)
+	sb.nbytes = 0
+	if err != nil {
+		return err
+	}
+
+	sb.Writer = bufio.NewWriterSize(sb.file, bufferSize)
+
+	// Write header.
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Log file created at: %s\n", now.Format("2006/01/02 15:04:05"))
+	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
+	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(&buf, "Log line format: [IWEF] mmdd hh:mm:ss.uuuuuu thread threadid file:line msg\n")
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)
 	return err
@@ -916,18 +973,34 @@ const bufferSize = 256 * 1024
 
 // createFiles creates all the log files for severity from sev down to infoLog.
 // l.mu is held.
-func (l *loggingT) createFiles(sev severity) error {
+func (l *loggingT) createFiles() error {
 	now := time.Now()
 	// Files are created in decreasing severity order, so as soon as we find one
 	// has already been created, we can stop.
-	for s := infoLog; s >= infoLog; s-- {
-		// for s := infoLog; s >= infoLog && l.file[s] == nil; s-- {
-		//for s := sev; s >= infoLog && l.file[s] == nil; s-- {
+	s := infoLog
+	//for s := sev; s >= infoLog && l.file[s] == nil; s-- {
+	sb := &syncBuffer{
+		logger: l,
+		sev:    s,
+	}
+	if err := sb.rotateFile(now); err != nil {
+		return err
+	}
+	l.file[s] = sb
+
+	return nil
+}
+
+func (l *loggingT) createDebugFiles(sev severity) error {
+	now := time.Now()
+	// Files are created in decreasing severity order, so as soon as we find one
+	// has already been created, we can stop.
+	for s := sev; s >= infoLog && l.file[s] == nil; s-- {
 		sb := &syncBuffer{
 			logger: l,
 			sev:    s,
 		}
-		if err := sb.rotateFile(now); err != nil {
+		if err := sb.rotateDebugFile(now); err != nil {
 			return err
 		}
 		l.file[s] = sb

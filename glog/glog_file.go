@@ -165,7 +165,11 @@ func logName(tag string, t time.Time) (name, link string) {
 	// 	t.Second(),
 	// 	pid)
 	//name = fmt.Sprintf(".%s", tag)
-	return "LOG." + host + "." + time.Now().Round(logging.duration).Format("MST2006-01-02-15:04:05"), "LOG.IWEF." + host + "." + time.Now().Round(time.Minute*1).Format("2006-01-02-15:04:05")
+	if !logging.debug {
+		return "LOG." + host + "." + time.Now().Round(logging.duration).Format("MST2006-01-02-15:04:05"), "LOG.IWEF." + host + "." + time.Now().Round(time.Minute*1).Format("2006-01-02-15:04:05")
+	} else {
+		return "DEBUGLOGS." + tag, "DEBUG" + name + "." + program
+	}
 }
 
 var onceLogDirs sync.Once
@@ -179,17 +183,19 @@ func create(tag string, t time.Time) (f *os.File, filename string, err error) {
 	if len(logDirs) == 0 {
 		return nil, "", errors.New("log: no log dirs")
 	}
-	// name, link := logName(tag, t)
-	name, _ := logName(tag, t)
+	name, link := logName(tag, t)
+	// name, _ := logName(tag, t)
 	var lastErr error
 	for _, dir := range logDirs {
 		fname := filepath.Join(dir, name)
 		//f, err := os.Create(fname)
 		f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err == nil {
-			// symlink := filepath.Join(dir, link)
-			// os.Remove(symlink)        // ignore err
-			// os.Symlink(name, symlink) // ignore err
+			if logging.debug {
+				symlink := filepath.Join(dir, link)
+				os.Remove(symlink)        // ignore err
+				os.Symlink(name, symlink) // ignore err
+			}
 			return f, fname, nil
 		}
 		lastErr = err
