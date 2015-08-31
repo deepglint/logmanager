@@ -17,6 +17,7 @@
 ```
 Usage of ./logserver:
   -alsologtostderr_deepglint=false: log to standard error as well as files
+  -debug=false: set debug to true to output local debug file
   -influxdb_node_consistency="one": Influxdb nodes write consistency
   -influxdb_password="": Influxdb basic auth password
   -influxdb_retention_policy="3d": Time to keep old data before clean it
@@ -48,6 +49,7 @@ Usage of ./logserver:
  Usage of ./logclient:
   -alsologtostderr_deepglint=false: log to standard error as well as files
   -client_listen_port=":1735": Log client server listening port
+  -debug=false: set debug to true to output local debug file
   -dir="./": Upload Directory
   -keep_interval=10m0s: Log file kept time (better be bigger than sleep_interval and upload_interval)
   -log_backtrace_at_deepglint=:0: when logging hits line file:N, emit a stack trace
