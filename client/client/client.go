@@ -81,7 +81,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 		}
 		if b, _ := path.Match("LOG.*.*????-??-??-??:??:??", f.Name()); b {
 			fields := strings.Split(f.Name(), ".")
-			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[2])
+			t, _ := time.Parse("MST2006-01-02T15:04:05Z", fields[2])
 			time_int := t.Unix()
 			// glog.Infoln("Log created at: ", t, "\tTime now: ", time.Now())
 			// fmt.Println("Log created at: ", t, "\tTime now: ", time.Now())
@@ -99,7 +99,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 		}
 		if b, _ := path.Match("OLD.LOG.*.*????-??-??-??:??:??", f.Name()); b {
 			fields := strings.Split(f.Name(), ".")
-			t, _ := time.Parse("MST2006-01-02-15:04:05", fields[3])
+			t, _ := time.Parse("MST2006-01-02T15:04:05Z", fields[3])
 			time_int := t.Unix()
 			if time.Now().Unix()-int64(keep.Seconds()) > time_int {
 				err := os.Remove(filename)
