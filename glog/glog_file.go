@@ -166,7 +166,7 @@ func logName(tag string, t time.Time) (name, link string) {
 	// 	pid)
 	//name = fmt.Sprintf(".%s", tag)
 	if !logging.debug {
-		return "LOG." + host + "." + time.Now().Round(logging.duration).Format("MST2006-01-02-15:04:05"), "LOG.IWEF." + host + "." + time.Now().Round(time.Minute*1).Format("2006-01-02-15:04:05")
+		return "LOG." + host + "." + time.Now().Round(logging.duration).Format("MST2006-01-02T15:04:05Z"), "LOG.IWEF." + host + "." + time.Now().Round(time.Minute*1).Format("2006-01-02T15:04:05Z")
 	} else {
 		return "DEBUGLOGS." + tag, "DEBUG" + name + "." + program
 	}
