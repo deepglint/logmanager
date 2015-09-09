@@ -68,8 +68,12 @@ Usage of ./logserver:
 ```
 ###api
 	同步客户端最新的日志到网管服务器
-	URL: http://clienthost:1735/sync/
+	URL: http://clienthost:1735/sync
 	method: HTTP GET
+
+  URL: http://clienthost:1735/locallog
+  method: HTTP GET
+  params: interval 
 	
 	
 ###启动示例
