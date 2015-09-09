@@ -70,10 +70,12 @@ Usage of ./logserver:
 	同步客户端最新的日志到网管服务器
 	URL: http://clienthost:1735/sync
 	method: HTTP GET
-
-  URL: http://clienthost:1735/locallog
-  method: HTTP GET
-  params: interval 
+	
+	从web端查看本地日志
+	URL: http://clienthost:1735/locallog
+  	method: HTTP GET
+  	params: interval 查看interval到现在的本地日志 
+  	示例: http://clienthost:1735/locallog?interval=5m
 	
 	
 ###启动示例
