@@ -68,6 +68,7 @@ func main() {
 	app.RegisterController("logclient", logclientcontroller)
 	app.AddRoute(ripple.Route{Pattern: "sync", Controller: "logclient", Action: "Sync"})
 	app.AddRoute(ripple.Route{Pattern: "favicon.ico", Controller: "logclient", Action: "Favicon"})
+	app.AddRoute(ripple.Route{Pattern: "locallog", Controller: "logclient", Action: "LocalLogFile"})
 	app.SetBaseUrl("/")
 	http.HandleFunc("/", app.ServeHTTP)
 	glog.Infof("Starting log client server at ", config.ListenPort)
