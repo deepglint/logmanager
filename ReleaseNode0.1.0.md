@@ -1,7 +1,7 @@
 # logmanager
 ```
 服务名称：logmanager
-服务版本号：0.1.0
+服务版本号：0.1.1
 提交者：kaixian hu
 日期：2015-08-27
 ```
