@@ -5,7 +5,7 @@ import (
 	//"bytes"
 	//"encoding/json"
 	"errors"
-	//"fmt"
+	"fmt"
 	"github.com/deepglint/glog"
 	//"io"
 	"mime/multipart"
@@ -251,6 +251,7 @@ func (this *LogForwarder) Write(file multipart.File, filename string) (*http.Res
 	defer resp.Body.Close()
 	//fmt.Println(resp.StatusCode)
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		fmt.Println(resp.StatusCode, resp, resp.Body)
 		write_err := errors.New("Write to influxdb failed, bad request format")
 		glog.Errorf("%v", write_err)
 		return nil, write_err
