@@ -2,6 +2,15 @@
 *.o
 *.a
 *.so
+*.arm
+*testLogGenerator.go
+test*
+*.html
+*.swap
+*.swp
+logclient
+logserver
+
 
 # Folders
 _obj
