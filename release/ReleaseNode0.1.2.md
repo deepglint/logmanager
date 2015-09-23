@@ -79,7 +79,7 @@ Usage of ./logserver:
 	
 	
 ###启动示例
-	sudo docker run -i -t -d -p 1735:1735 --restart=always -net=host --name=logclient -v=/etc/localtime:/etc/localtime:ro -v=/tmp:/tmp 192.168.5.46:5000/logclient:arm0.1.2 ./logclient.arm -keep_interval=30m -upload_interval=10m -sleep_interval=10m -server_host http://192.168.5.46 -dir /tmp/ -log_dir_deepglint /tmp/	
+	sudo docker run -i -t -d -p 1735:1735 --restart=always --net=host --name=logclient -v=/etc/localtime:/etc/localtime:ro -v=/tmp:/tmp 192.168.5.46:5000/logclient:arm0.1.2 ./logclient.arm -keep_interval=30m -upload_interval=10m -sleep_interval=10m -server_host http://192.168.5.46 -dir /tmp/ -log_dir_deepglint /tmp/	
 	
 ##测试方法
 	用logmanager目录下的glog替换程序原来使用的glog，重新编译后启动logclient并设置参数为demo地址即可
