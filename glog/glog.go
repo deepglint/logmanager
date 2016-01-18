@@ -404,7 +404,8 @@ func init() {
 	flag.Var(&logging.stderrThreshold, "stderr", "logs at or above this threshold go to stderr")
 	flag.Var(&logging.vmodule, "vmodule_deepglint", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at_deepglint", "when logging hits line file:N, emit a stack trace")
-	flag.DurationVar(&logging.duration, "log_file_name_interval", time.Duration(5)*time.Minute, "log file name interval, create a new log file every interval")
+	flag.DurationVar(&logging.duration, "log_file_name_interval", time.Duration(24)*time.Hour, "log file name interval, create a new log file every interval")
+	flag.IntVar(&logging.logLevel, "log_level", 1, "0 for all log, 1 for log above warning, 2 for log above error, 3 for fatal only, 4 for no log, default set to 1")
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
 
@@ -458,6 +459,7 @@ type loggingT struct {
 
 	duration time.Duration
 	debug    bool
+	logLevel int
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -1137,74 +1139,98 @@ func (v Verbose) Infof(format string, args ...interface{}) {
 // Info logs to the INFO log.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Info(args ...interface{}) {
-	logging.print(infoLog, args...)
+	if logging.logLevel == 0 {
+		logging.print(infoLog, args...)
+	}
 }
 
 // Infoln logs to the INFO log.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Infoln(args ...interface{}) {
-	logging.println(infoLog, args...)
+	if logging.logLevel == 0 {
+		logging.println(infoLog, args...)
+	}
 }
 
 // Infof logs to the INFO log.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Infof(format string, args ...interface{}) {
-	logging.printf(infoLog, format, args...)
+	if logging.logLevel == 0 {
+		logging.printf(infoLog, format, args...)
+	}
 }
 
 // Warning logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Warning(args ...interface{}) {
-	logging.print(warningLog, args...)
+	if logging.logLevel <= 1 {
+		logging.print(warningLog, args...)
+	}
 }
 
 // Warningln logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Warningln(args ...interface{}) {
-	logging.println(warningLog, args...)
+	if logging.logLevel <= 1 {
+		logging.println(warningLog, args...)
+	}
 }
 
 // Warningf logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Warningf(format string, args ...interface{}) {
-	logging.printf(warningLog, format, args...)
+	if logging.logLevel <= 1 {
+		logging.printf(warningLog, format, args...)
+	}
 }
 
 // Error logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
-	logging.print(errorLog, args...)
+	if logging.logLevel <= 2 {
+		logging.print(errorLog, args...)
+	}
 }
 
 // Errorln logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Errorln(args ...interface{}) {
-	logging.println(errorLog, args...)
+	if logging.logLevel <= 2 {
+		logging.println(errorLog, args...)
+	}
 }
 
 // Errorf logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Errorf(format string, args ...interface{}) {
-	logging.printf(errorLog, format, args...)
+	if logging.logLevel <= 2 {
+		logging.printf(errorLog, format, args...)
+	}
 }
 
 // Fatal logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Fatal(args ...interface{}) {
-	logging.print(fatalLog, args...)
+	if logging.logLevel <= 3 {
+		logging.print(fatalLog, args...)
+	}
 }
 
 // Fatalln logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Fatalln(args ...interface{}) {
-	logging.println(fatalLog, args...)
+	if logging.logLevel <= 3 {
+		logging.println(fatalLog, args...)
+	}
 }
 
 // Fatalf logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Fatalf(format string, args ...interface{}) {
-	logging.printf(fatalLog, format, args...)
+	if logging.logLevel <= 3 {
+		logging.printf(fatalLog, format, args...)
+	}
 }

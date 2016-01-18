@@ -2,11 +2,13 @@ package client
 
 import (
 	"bytes"
-	"fmt"
-	"io"
-	//"io/ioutil"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/deepglint/glog"
+	"github.com/hpcloud/tail"
+	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -149,4 +151,104 @@ func SendLogNow(url, dir string) error {
 func Flush(url, dir string) error {
 	err := SendLogNow(url, dir)
 	return err
+}
+
+func shortHostname(hostname string) string {
+	if i := strings.Index(hostname, "."); i >= 0 {
+		return hostname[:i]
+	}
+	return hostname
+}
+
+type SensorId struct {
+	Key           string
+	Value         string
+	ModifiedIndex int
+	CreatedIndex  int
+}
+
+type Sensor struct {
+	Action string
+	Node   SensorId
+}
+
+func GetHost() (string, error) {
+	var host string
+	resp, err := http.Get("http://localhost:4001/v2/keys/config/global/sensor_uid")
+	if err != nil || resp.StatusCode != 200 {
+		fmt.Printf("%v", err)
+		// fmt.Println(os.Hostname())
+		h, err := os.Hostname()
+		if err == nil {
+			host = shortHostname(h)
+		}
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		fmt.Printf("%s", string(body))
+		var sen Sensor
+		err = json.Unmarshal(body, &sen)
+		if err == nil {
+			host = sen.Node.Value
+			return host, nil
+		}
+	}
+	return host, errors.New("Acquiring sensorid failed, use os.hostname")
+}
+
+func writeFile(filename, text string) {
+	fd, _ := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	defer fd.Close()
+	fd.WriteString(text)
+	fd.WriteString("\n")
+}
+
+func TailLog(host string, interval time.Duration, dir string, limit int) {
+	fmt.Println("START TAILING LOG.......")
+	count := 0
+	for {
+	NEW_TAIL_FILE:
+		tail_file := dir + "LOG." + time.Now().Round(time.Hour*24).Format("MST2006-01-02T15:04:05Z")
+		t, err := tail.TailFile(tail_file, tail.Config{Follow: true, MustExist: true})
+		if err != nil {
+			glog.Errorf("Tail error: %v", err)
+			fmt.Printf("Tail error: %v", err)
+			time.Sleep(time.Second * 30)
+			continue
+		}
+		fmt.Println(tail_file)
+		var fname_now, fname_old string
+	NEW_ROTATE_FILE:
+		count = 0
+	LOOP:
+		select {
+		case line := <-t.Lines:
+			if count < limit {
+				fname_old = dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
+				writeFile(fname_old, line.Text)
+				count++
+				goto LOOP
+			} else {
+				glog.Warningln("Reach line number limit, no more write to current file.")
+				for _ = range time.NewTicker(30 * time.Second).C {
+					fname_now = dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
+					if fname_old != fname_now {
+						glog.Infoln("New rotate log file, go to NEW_ROTATE_FILE")
+						goto NEW_ROTATE_FILE
+					} else {
+						glog.Infoln("Reach line number limit, ignore")
+					}
+				}
+			}
+		case <-time.After(time.Minute * 1):
+			new_tail_file := dir + "LOG." + time.Now().Round(time.Hour*24).Format("MST2006-01-02T15:04:05Z")
+			if new_tail_file != tail_file {
+				glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
+				goto NEW_TAIL_FILE
+			} else {
+				glog.Infoln("Go to LOOP")
+				goto LOOP
+			}
+		}
+	}
 }
