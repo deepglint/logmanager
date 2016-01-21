@@ -94,7 +94,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 				} else {
 					os.Rename(filename, path.Dir(filename)+"/OLD."+f.Name())
 					glog.Infof("%s upload succeed \n", filename)
-					fmt.Printf("%s upload succeed \n", filename)
+					// fmt.Printf("%s upload succeed \n", filename)
 				}
 			}
 			return nil
@@ -107,7 +107,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 				err := os.Remove(filename)
 				if err == nil {
 					glog.Infof("%s removed \n", filename)
-					fmt.Printf("%s removed \n", filename)
+					// fmt.Printf("%s removed \n", filename)
 				}
 			}
 			return nil
@@ -136,7 +136,7 @@ func SendLogNow(url, dir string) error {
 				glog.Errorf("Upload file failed, %v", post_err)
 			} else {
 				glog.Infof("%s upload succeed \n", filename)
-				fmt.Printf("%s upload succeed \n", filename)
+				// fmt.Printf("%s upload succeed \n", filename)
 			}
 			return nil
 		}
@@ -185,7 +185,7 @@ func GetHost() (string, error) {
 	} else {
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
-		fmt.Printf("%s", string(body))
+		// fmt.Printf("%s", string(body))
 		var sen Sensor
 		err = json.Unmarshal(body, &sen)
 		if err == nil {
@@ -208,15 +208,15 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 	count := 0
 	for {
 	NEW_TAIL_FILE:
-		tail_file := dir + "LOG." + time.Now().Round(time.Hour*24).Format("MST2006-01-02T15:04:05Z")
+		tail_file := fmt.Sprintf("%sLOG.%d-%02d-%dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
 		t, err := tail.TailFile(tail_file, tail.Config{Follow: true, MustExist: true})
 		if err != nil {
 			glog.Errorf("Tail error: %v", err)
-			fmt.Printf("Tail error: %v", err)
+			// fmt.Printf("Tail error: %v", err)
 			time.Sleep(time.Second * 30)
 			continue
 		}
-		fmt.Println(tail_file)
+		glog.Infoln(tail_file)
 		var fname_now, fname_old string
 	NEW_ROTATE_FILE:
 		count = 0
@@ -241,7 +241,7 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 				}
 			}
 		case <-time.After(time.Minute * 1):
-			new_tail_file := dir + "LOG." + time.Now().Round(time.Hour*24).Format("MST2006-01-02T15:04:05Z")
+			new_tail_file := fmt.Sprintf("%sLOG.%d-%02d-%dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
 			if new_tail_file != tail_file {
 				glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
 				goto NEW_TAIL_FILE
@@ -251,4 +251,34 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 			}
 		}
 	}
+}
+
+func CleanLog(dir string, tt time.Duration) error {
+	err := filepath.Walk(dir, func(filename string, f os.FileInfo, err error) error {
+		if f == nil {
+			info_err := errors.New("Filepath.Walk() returned no fileinfo")
+			glog.Errorf("%v", info_err)
+			return nil
+		}
+		if f.IsDir() {
+			return nil
+		}
+		if b, _ := path.Match("LOG.*????-??-??T??:??:??Z", f.Name()); b {
+			fields := strings.Split(f.Name(), ".")
+			t, _ := time.Parse("2006-01-02T15:04:05Z", fields[1])
+			time_int := t.Unix()
+			if time.Now().Unix()-int64(tt.Seconds()) > time_int {
+				err := os.Remove(filename)
+				if err == nil {
+					glog.Infof("%s removed", filename)
+				}
+			}
+			return nil
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
