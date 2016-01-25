@@ -90,7 +90,7 @@ func SendLog(url, dir string, upload, keep time.Duration) error {
 			if time.Now().Unix()-int64(upload.Seconds()) > time_int {
 				post_err := PostFile(filename, url)
 				if post_err != nil {
-					// glog.Errorf("Upload file failed, %v", post_err)
+					glog.Errorf("Upload file failed, %v", post_err)
 				} else {
 					os.Rename(filename, path.Dir(filename)+"/OLD."+f.Name())
 					glog.Infof("%s upload succeed \n", filename)
@@ -244,6 +244,7 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 			new_tail_file := fmt.Sprintf("%sLOG.%d-%02d-%dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
 			if new_tail_file != tail_file {
 				glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
+				t.Stop()
 				goto NEW_TAIL_FILE
 			} else {
 				glog.Infoln("Go to LOOP")
