@@ -2,13 +2,11 @@ package client
 
 import (
 	"bytes"
-	"encoding/json"
+	// "encoding/json"
 	"errors"
 	"fmt"
-	"github.com/deepglint/glog"
-	"github.com/hpcloud/tail"
 	"io"
-	"io/ioutil"
+	// "io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -16,6 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/deepglint/glog"
+	"github.com/hpcloud/tail"
 )
 
 func PostFile(filename, targetUrl string) error {
@@ -32,7 +33,7 @@ func PostFile(filename, targetUrl string) error {
 	//glog.Flush()
 	fh, err := os.Open(filename)
 	if err != nil {
-		glog.Errorf("Error opening file")
+		glog.Errorf("Error opening file", err)
 		return err
 	}
 	defer fh.Close()
@@ -51,10 +52,11 @@ func PostFile(filename, targetUrl string) error {
 		glog.Errorf("%v", err)
 		return err
 	}
+	glog.Errorln(resp, err)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 204 && resp.StatusCode != 200 {
-		if resp.StatusCode == 400 {
+		if resp.StatusCode == 411 {
 			code_err := errors.New("Bad filename format")
 			glog.Errorf("%s: %v %d", filename, code_err, resp.StatusCode)
 			return code_err
@@ -173,31 +175,36 @@ type Sensor struct {
 }
 
 func GetHost() (string, error) {
-	var host string
-	resp, err := http.Get("http://localhost:4001/v2/keys/config/global/sensor_uid")
-	if err != nil || resp.StatusCode != 200 {
-		fmt.Printf("%v", err)
-		// fmt.Println(os.Hostname())
-		h, err := os.Hostname()
-		if err == nil {
-			host = shortHostname(h)
-		}
-	} else {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		// fmt.Printf("%s", string(body))
-		var sen Sensor
-		err = json.Unmarshal(body, &sen)
-		if err == nil {
-			host = sen.Node.Value
-			return host, nil
-		}
-	}
-	return host, errors.New("Acquiring sensorid failed, use os.hostname")
+	// var host string
+	// resp, err := http.Get("http://localhost:4001/v2/keys/config/global/sensor_uid")
+	// if err != nil || resp.StatusCode != 200 {
+	// 	fmt.Printf("%v", err)
+	// 	// fmt.Println(os.Hostname())
+	//
+	// 	if err == nil {
+	// 		host = shortHostname(h)
+	// 	}
+	// } else {
+	// 	defer resp.Body.Close()
+	// 	body, err := ioutil.ReadAll(resp.Body)
+	// 	// fmt.Printf("%s", string(body))
+	// 	var sen Sensor
+	// 	err = json.Unmarshal(body, &sen)
+	// 	if err == nil {
+	// 		host = sen.Node.Value
+	// 		return host, nil
+	// 	}
+	// }
+	h, _ := os.Hostname()
+	return h, nil
 }
 
 func writeFile(filename, text string) {
-	fd, _ := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	fd, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		glog.Errorf("%v", err)
+		return
+	}
 	defer fd.Close()
 	fd.WriteString(text)
 	fd.WriteString("\n")
@@ -208,7 +215,8 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 	count := 0
 	for {
 	NEW_TAIL_FILE:
-		tail_file := fmt.Sprintf("%sLOG.%d-%02d-%dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
+		tail_file := fmt.Sprintf("%sLOG.%4d-%02d-%02dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
+		fmt.Printf("Tailing %v\n", tail_file)
 		t, err := tail.TailFile(tail_file, tail.Config{Follow: true, MustExist: true})
 		if err != nil {
 			glog.Errorf("Tail error: %v", err)
@@ -217,38 +225,47 @@ func TailLog(host string, interval time.Duration, dir string, limit int) {
 			continue
 		}
 		glog.Infoln(tail_file)
-		var fname_now, fname_old string
+		var fname_now, fname_old string = "", ""
 	NEW_ROTATE_FILE:
 		count = 0
-	LOOP:
-		select {
-		case line := <-t.Lines:
-			if count < limit {
-				fname_old = dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
-				writeFile(fname_old, line.Text)
-				count++
-				goto LOOP
-			} else {
-				glog.Warningln("Reach line number limit, no more write to current file.")
-				for _ = range time.NewTicker(30 * time.Second).C {
-					fname_now = dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
-					if fname_old != fname_now {
-						glog.Infoln("New rotate log file, go to NEW_ROTATE_FILE")
-						goto NEW_ROTATE_FILE
-					} else {
-						glog.Infoln("Reach line number limit, ignore")
+		for {
+			select {
+			case line := <-t.Lines:
+				if count < limit {
+					tmp := dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
+					if fname_old != tmp {
+						count = 0
+						fname_old = tmp
+					}
+					writeFile(fname_old, line.Text)
+					count++
+				} else {
+					new_tail_file := fmt.Sprintf("%sLOG.%4d-%02d-%02dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
+					if new_tail_file != tail_file {
+						glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
+						t.Stop()
+						goto NEW_TAIL_FILE
+					}
+					glog.Warningln("Reach line number limit, no more write to current file.")
+					for _ = range time.NewTicker(30 * time.Second).C {
+						fname_now = dir + "LOG." + host + "." + time.Now().Round(interval).Format("MST2006-01-02T15:04:05Z")
+						if fname_old != fname_now {
+							glog.Infoln("New rotate log file, go to NEW_ROTATE_FILE")
+							goto NEW_ROTATE_FILE
+						} else {
+							glog.Infoln("Reach line number limit, ignore")
+						}
 					}
 				}
-			}
-		case <-time.After(time.Minute * 1):
-			new_tail_file := fmt.Sprintf("%sLOG.%d-%02d-%dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
-			if new_tail_file != tail_file {
-				glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
-				t.Stop()
-				goto NEW_TAIL_FILE
-			} else {
-				glog.Infoln("Go to LOOP")
-				goto LOOP
+			case <-time.After(time.Minute * 5):
+				new_tail_file := fmt.Sprintf("%sLOG.%4d-%02d-%02dT00:00:00Z", dir, time.Now().Year(), time.Now().Month(), time.Now().Day())
+				if new_tail_file != tail_file {
+					glog.Infoln("New Tail File, go to NEW_TAIL_FILE")
+					t.Stop()
+					goto NEW_TAIL_FILE
+				} else {
+					glog.Infoln("Go to LOOP")
+				}
 			}
 		}
 	}
@@ -264,8 +281,12 @@ func CleanLog(dir string, tt time.Duration) error {
 		if f.IsDir() {
 			return nil
 		}
-		if b, _ := path.Match("LOG.*????-??-??T??:??:??Z", f.Name()); b {
+		if b, _ := path.Match("LOG.????-??-??T??:??:??Z", f.Name()); b {
+			glog.Infof("Processing %v", f.Name())
 			fields := strings.Split(f.Name(), ".")
+			if len(fields) < 2 {
+				return nil
+			}
 			t, _ := time.Parse("2006-01-02T15:04:05Z", fields[1])
 			time_int := t.Unix()
 			if time.Now().Unix()-int64(tt.Seconds()) > time_int {

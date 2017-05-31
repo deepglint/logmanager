@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/deepglint/glog"
-	//"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -29,14 +29,14 @@ type Config struct {
 }
 
 type LogForwarder struct {
-	url             url.URL
-	username        string
-	password        string
-	httpClient      *http.Client
-	userAgent       string
-	retentionPolicy string
-	precision       string
-	consistency     string
+	Url             url.URL
+	Username        string
+	Password        string
+	HttpClient      *http.Client
+	UserAgent       string
+	RetentionPolicy string
+	Precision       string
+	Consistency     string
 }
 
 type LogModel struct {
@@ -51,21 +51,22 @@ type LogModel struct {
 type Query struct {
 	Command  string
 	Database string
+	Epoch    string
 }
 
 func NewLogForwarder(c Config) (*LogForwarder, error) {
 	logforwarder := &LogForwarder{
-		url:             c.URL,
-		username:        c.Username,
-		password:        c.Password,
-		userAgent:       c.UserAgent,
-		httpClient:      &http.Client{Timeout: c.Timeout},
-		retentionPolicy: c.RetentionPolicy,
-		precision:       c.Precision,
-		consistency:     c.Consistency,
+		Url:             c.URL,
+		Username:        c.Username,
+		Password:        c.Password,
+		UserAgent:       c.UserAgent,
+		HttpClient:      &http.Client{Timeout: c.Timeout},
+		RetentionPolicy: c.RetentionPolicy,
+		Precision:       c.Precision,
+		Consistency:     c.Consistency,
 	}
-	if logforwarder.userAgent == "" {
-		logforwarder.userAgent = "InfluxDBLogForwarder"
+	if logforwarder.UserAgent == "" {
+		logforwarder.UserAgent = "InfluxDBLogForwarder"
 	}
 	return logforwarder, nil
 }
@@ -79,7 +80,9 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 	var database string
 	if strings.ContainsAny(filename, ".") {
 		fields := strings.Split(filename, ".")
-		database = fields[1]
+		if len(fields) >= 2 {
+			database = fields[1]
+		}
 	} else {
 		database = filename
 	}
@@ -90,7 +93,7 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 		return 400, err
 	}
 
-	q = alterRetentionPolicy(database, this.retentionPolicy)
+	q = alterRetentionPolicy(database, this.RetentionPolicy)
 	_, err = this.Query(q)
 	if err != nil {
 		return 400, err
@@ -111,6 +114,7 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 			glog.Errorf("Copy to tmp log file failed: %v", err)
 			return 400, err
 		}*/
+		glog.Errorln(write_err)
 		return 400, write_err
 	}
 	return 204, nil
@@ -118,7 +122,7 @@ func (this *LogForwarder) SaveFile(file multipart.File, handler *multipart.FileH
 
 func (this *LogForwarder) Ping() (time.Duration, string, error) {
 	now := time.Now()
-	url := this.url
+	url := this.Url
 	url.Path = "ping"
 	// fmt.Println(url.String())
 
@@ -127,12 +131,12 @@ func (this *LogForwarder) Ping() (time.Duration, string, error) {
 		glog.Errorf("%v", err)
 		return 0, "", err
 	}
-	req.Header.Set("User-Agent", this.userAgent)
-	if this.username != "" {
-		req.SetBasicAuth(this.username, this.password)
+	req.Header.Set("User-Agent", this.UserAgent)
+	if this.Username != "" {
+		req.SetBasicAuth(this.Username, this.Password)
 	}
 
-	resp, err := this.httpClient.Do(req)
+	resp, err := this.HttpClient.Do(req)
 	if err != nil {
 		glog.Errorf("%v", err)
 		return 0, "", err
@@ -143,15 +147,18 @@ func (this *LogForwarder) Ping() (time.Duration, string, error) {
 	return time.Since(now), version, nil
 }
 
-func (this *LogForwarder) Query(q *Query) (*http.Response, error) {
+func (this *LogForwarder) Query(q *Query) ([]byte, error) {
 	//fmt.Println(q.Command)
 	//fmt.Println(q.Database)
-	url := this.url
+	url := this.Url
 	url.Path = "query"
 	params := url.Query()
 	params.Set("q", q.Command)
 	if q.Database != "" {
 		params.Set("db", q.Database)
+	}
+	if q.Epoch != "" {
+		params.Set("epoch", q.Epoch)
 	}
 	url.RawQuery = params.Encode()
 	// fmt.Println(url.String())
@@ -161,17 +168,23 @@ func (this *LogForwarder) Query(q *Query) (*http.Response, error) {
 		glog.Errorf("%v", err)
 		return nil, err
 	}
-	req.Header.Set("User-Agent", this.userAgent)
-	if this.username != "" {
-		req.SetBasicAuth(this.username, this.password)
+	req.Header.Set("User-Agent", this.UserAgent)
+	if this.Username != "" {
+		req.SetBasicAuth(this.Username, this.Password)
 	}
 
-	resp, err := this.httpClient.Do(req)
+	resp, err := this.HttpClient.Do(req)
 	if err != nil {
 		glog.Errorf("%v", err)
 		return nil, err
 	}
+
 	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		glog.Errorln(err)
+		return nil, err
+	}
 	//fmt.Println(resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
@@ -179,19 +192,19 @@ func (this *LogForwarder) Query(q *Query) (*http.Response, error) {
 		glog.Errorf("%v", query_err)
 		return nil, query_err
 	}
-	return resp, nil
+	return body, nil
 }
 
 func (this *LogForwarder) Write(file multipart.File, filename string) (*http.Response, error) {
-	url := this.url
+	url := this.Url
 	url.Path = "write"
 
 	//fields := strings.Split(filename, ".")
 
 	params := url.Query()
-	params.Set("consistency", this.consistency)
+	params.Set("consistency", this.Consistency)
 	params.Set("db", filename)
-	params.Set("precision", this.precision)
+	params.Set("precision", this.Precision)
 	//params.Set("rp", "default")
 	url.RawQuery = params.Encode()
 
@@ -237,13 +250,14 @@ func (this *LogForwarder) Write(file multipart.File, filename string) (*http.Res
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "")
-	req.Header.Set("User-Agent", this.userAgent)
-	if this.username != "" {
-		req.SetBasicAuth(this.username, this.password)
+	req.Header.Set("User-Agent", this.UserAgent)
+	if this.Username != "" {
+		req.SetBasicAuth(this.Username, this.Password)
 	}
 
-	resp, err := this.httpClient.Do(req)
+	resp, err := this.HttpClient.Do(req)
 	if err != nil {
+		glog.Errorln(err)
 		return nil, err
 	} else {
 		//os.Remove("/tmp/logserver/" + filename)

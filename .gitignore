@@ -10,7 +10,8 @@ test*
 *.swp
 logclient
 logserver
-
+logclient.linux
+logserver.linux
 
 # Folders
 _obj

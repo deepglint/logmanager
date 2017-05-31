@@ -54,7 +54,7 @@ func main() {
 
 	time.Sleep(time.Second * time.Duration(rand.Int()%10))
 	// }
-	if config.Dir[len(config.Dir)-1] != '/' {
+	if config.Dir != "" && config.Dir[len(config.Dir)-1] != '/' {
 		config.Dir += "/"
 	}
 

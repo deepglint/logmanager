@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	"time"
+
 	"github.com/deepglint/glog"
 	"github.com/deepglint/logmanager/controller"
 	"github.com/deepglint/logmanager/models"
 	"github.com/deepglint/muses/util/ripple"
-	"net/http"
-	"time"
 )
 
 type LogConfig struct {
@@ -40,6 +41,10 @@ func main() {
 	app.RegisterController("log", logcontroller)
 	//app.AddRoute(ripple.Route{Pattern: "_controller/_action"})
 	app.AddRoute(ripple.Route{Pattern: "upload", Controller: "log", Action: "Upload"})
+	app.AddRoute(ripple.Route{Pattern: "getlog", Controller: "log", Action: "GetLog"})
+	app.AddRoute(ripple.Route{Pattern: "databases", Controller: "log", Action: "Databases"})
+	app.AddRoute(ripple.Route{Pattern: "tables", Controller: "log", Action: "Tables"})
+	app.AddRoute(ripple.Route{Pattern: "count", Controller: "log", Action: "LogCount"})
 	app.SetBaseUrl("/")
 	http.HandleFunc("/", app.ServeHTTP)
 
